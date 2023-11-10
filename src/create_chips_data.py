@@ -51,8 +51,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
     n_lines=0
     line_x=int(MAX_WORD_H/3)
     saved_pages=0
-    max_lines=math.floor(PAGE_H/(MAX_WORD_H+SPACE_Y))
-    page_left_from_bottom=PAGE_H-((MAX_WORD_H+SPACE_Y)*max_lines)
+    max_lines=math.floor((PAGE_H-UPPER_PADDING)/(MAX_WORD_H+SPACE_Y))
+    page_left_from_bottom=PAGE_H-UPPER_PADDING-((MAX_WORD_H+SPACE_Y)*max_lines)
     sentence_img.append(np.ones((MAX_WORD_H, int(MAX_WORD_H/3)))*255)
     skipped_words=[]
     
@@ -62,6 +62,9 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
             y,x=img.shape[:2]
             w_h=random.randint(MIN_WORD_H,MAX_WORD_H-1)
             new_x=int(w_h/y*x)
+            if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
+                w_h=MIN_WORD_H
+                new_x=int(w_h/y*x)
             img=cv2.resize(img,(new_x,w_h))
             y,x=img.shape[:2]
             img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
@@ -90,6 +93,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
                 if n_lines%max_lines==0:
                     saved_pages+=1
                     final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
+                    final_image.insert(0,np.ones((UPPER_PADDING,PAGE_W))*255)
                     save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
                     final_image=[]
                     img_bbox=[]
@@ -98,10 +102,9 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
                 line_x=int(MAX_WORD_H/3)+new_x+SPACE_X
                 # print('NEW LINE')
             bbox_x1=max(0,line_x-new_x-SPACE_X - 8)
-            bbox_y1=max(0, (MAX_WORD_H+SPACE_Y)*(n_lines%max_lines) - 8)
+            bbox_y1=max(0, (MAX_WORD_H+SPACE_Y)*(n_lines%max_lines) - 8 + UPPER_PADDING)
             bbox_x2=line_x-SPACE_X + 8
-            bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8
-            
+            bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
             t_bbox=f'{image_map[img_path]} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
         except Exception as A:
             print(A)
