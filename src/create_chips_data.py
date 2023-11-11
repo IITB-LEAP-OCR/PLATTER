@@ -3,6 +3,7 @@ import os
 import numpy as np
 import random
 import math
+import json
 import pandas as pd
 
 from config import *
@@ -60,7 +61,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
         try:
             img=preprocess(os.path.join(input_folder,img_path),BORDER_CUT_X,BORDER_CUT_Y)
             y,x=img.shape[:2]
-            w_h=random.randint(MIN_WORD_H,MAX_WORD_H-1)
+            w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+            data_stats[w_h] +=1
             new_x=int(w_h/y*x)
             if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
                 w_h=MIN_WORD_H
@@ -135,7 +137,15 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
     print('PROCESS FINISHED')
 
 
+
+data_stats = {}
+
+for value in range(31,65):
+    data_stats[value]=0
+
 if __name__ == "__main__":
+    
+
     
     for language in LANGUAGES:
         input_folder = INPUT_FOLDER + language + '/'
@@ -157,6 +167,11 @@ if __name__ == "__main__":
                     os.makedirs(OUTPUT_FOLDER + typeset + '/txt/')
                 saved_pages = 0
             img=gen_images(language, input_folder + typeset + '/images/', OUTPUT_FOLDER + typeset + '/', image_map, saved_pages)
+            
+            
+    
+    with open('data_stats.json', 'w', encoding='utf-8') as f:
+        json.dump(data_stats, f, ensure_ascii=False, indent=4)
  
  
  
