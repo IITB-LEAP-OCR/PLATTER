@@ -21,7 +21,7 @@ def process_hocr(input_file,output_folder):
             prev_bbox_y=int(yl)
     if len(temp_line)>0:
         lines.append(temp_line)
-
+    # print(lines)
     for line in lines:
         _,xl,yl,_,_=line[0].split()
         _,_,_,xh,yh=line[-1].split()

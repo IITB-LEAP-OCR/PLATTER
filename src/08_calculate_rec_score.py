@@ -59,22 +59,19 @@ def getUnionAreas(boxA, boxB, interArea=None):
     return float(area_A + area_B - interArea)
 
 
+models = ['crnn_vgg16_bn', 'master', 'vitstr_small', 'crnn_mobilenet_v3_small', 'parseq']
 
+for model in models:
 
+    predictions_dir = f'/data/BADRI/OCR/results/ocr/finetuned_CHIPS_1/{model}/'
+    predictions_dir = '/data/BADRI/OCR/results/ocr/gt_chips_1/parseq/'
+    ground_truths_dir = '/data/BADRI/OCR/data/CHIPS_1/test/txt/'
 
-predictions_dir = '/data/BADRI/OCR/results/pretrained_sar_resnet31/'
-ground_truths_dir = '/data/BADRI/RECOGNITION/PAGE_LEVEL/CHIPS/test/txt/'
-
-languages = ['bengali','gujarati', 'gurumukhi', 'hindi', 'kannada', 'malayalam','odia', 'tamil', 'telugu', 'urdu']
-
-for lang in languages:
     final_predictions = []
     final_ground_truths = []
-    
-    
-    
-    for file in os.listdir(predictions_dir + lang + '/'):
-        predictions = get_data(predictions_dir + lang + '/' + file)
+
+    for file in os.listdir(predictions_dir):
+        predictions = get_data(predictions_dir+ file)
         ground_truths = get_data(ground_truths_dir + file)
 
         n = len(predictions)
@@ -92,5 +89,4 @@ for lang in languages:
         
     CRR = 100 - fastwer.score(final_predictions, final_ground_truths, char_level=True)
     WRR = 100 - fastwer.score(final_predictions, final_ground_truths)
-    # print(df)
-    print(lang, ":", CRR, WRR)
+    print(model,":", CRR, WRR)
