@@ -24,38 +24,40 @@ font_languages = {
  # You may need to adjust the font path
 
 
-model = 'vitstr_small'
-folder_name = 'finetuned_CHIPS_1'
+models = ['parseq', 'crnn_vgg16_bn', 'master', 'vitstr_small', 'crnn_mobilenet_v3_small', 'sar_resnet31']
+folder_name = 'gt_CHIPS1'
 
-DATA_DIR = f'/data/BADRI/OCR/results/ocr/{folder_name}/{model}/'
-DATA_DIR = '/data/BADRI/OCR/results/ocr/tesseract_CHIPS_1/'
-output_dir = f'/data/BADRI/OCR/results/visual/{folder_name}/{model}/'
-output_dir = '/data/BADRI/OCR/results/visual/tesseract_CHIPS_1/'
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+for model in models:
+
+    DATA_DIR = f'/data/BADRI/OCR/results/ocr/{folder_name}/{model}/'
+    # DATA_DIR = '/data/BADRI/OCR/results/ocr/tesseract_CHIPS_1/'
+    output_dir = f'/data/BADRI/OCR/results/visual/{folder_name}/{model}/'
+    # output_dir = '/data/BADRI/OCR/results/visual/tesseract_CHIPS_1/'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
 
-for file in sorted(os.listdir(DATA_DIR), key=natural_sort_key):
-    
-    # Create a blank image with white background
-    width, height = 1024, 1024
-    background_color = "white"
-    img = Image.new("RGB", (width, height), background_color)
-    draw = ImageDraw.Draw(img)
+    for file in sorted(os.listdir(DATA_DIR), key=natural_sort_key):
+        
+        # Create a blank image with white background
+        width, height = 1024, 1024
+        background_color = "white"
+        img = Image.new("RGB", (width, height), background_color)
+        draw = ImageDraw.Draw(img)
 
-    
-    language = file.split('_')[0]
-    df = pd.read_csv(DATA_DIR + file, sep=' ', names=['label', 'x1', 'y1', 'x2', 'y2'])
-    data = df.values.tolist()
-    try:
-        font = ImageFont.truetype(font_languages[language], font_size) 
-        for text, x1, y1, x2, y2 in data:
-            draw.text((x1, y1), text, font=font, fill="black")
-    except:
-        print(language)
-        print(file)
+        
+        language = file.split('_')[0]
+        df = pd.read_csv(DATA_DIR + file, sep=' ', names=['label', 'x1', 'y1', 'x2', 'y2'])
+        data = df.values.tolist()
+        try:
+            font = ImageFont.truetype(font_languages[language], font_size) 
+            for text, x1, y1, x2, y2 in data:
+                draw.text((x1, y1), text, font=font, fill="black")
+        except:
+            print(language)
+            print(file)
 
-    
+        
 
-    # Save the synthetic page
-    img.save(output_dir + file[:-4] + '.jpg')
+        # Save the synthetic page
+        img.save(output_dir + file[:-4] + '.jpg')

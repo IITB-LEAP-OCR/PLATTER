@@ -11,8 +11,8 @@ def natural_sort_key(s):
 
 languages = ['bengali', 'gujarati', 'gurumukhi', 'hindi', 'kannada', 'malayalam', 'odia', 'tamil', 'telugu', 'urdu']
 
-OCR_DATA_PATH = '/data/BADRI/OCR/data/CHIPS_1/test/images/'
-output_dir = '/data/BADRI/OCR/results/ocr/tesseract/'
+OCR_DATA_PATH = '/data/BADRI/OCR/data/PhDIndic11/images/'
+output_dir = '/data/BADRI/OCR/results/ocr/tesseract_PhDIndic11/'
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -79,6 +79,3 @@ for image_file in tqdm(sorted(os.listdir(OCR_DATA_PATH), key=natural_sort_key)):
 #     df = pd.DataFrame(predictions, columns=['pred', 'x1', 'y1', 'x2', 'y2'])
 #     df.to_csv(f'{output_dir}{image_file[:-4]}.txt', sep=' ', index=False, header=False)
     
-    # if(height!=1024):
-    #     value +=1
-    #     lang = languages[value]

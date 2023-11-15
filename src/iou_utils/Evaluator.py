@@ -163,17 +163,26 @@ class Evaluator:
             }
             ret.append(r)
             if npos:
-                print("Class " + str(c))
-                print("Total TP => " + str(np.sum(TP)))
-                #print("Total FP => " + str(np.sum(FP)))
-                print("Total Ground Truths => " + str(npos))
+                # print("Class " + str(c))
+                # print("Total TP => " + str(np.sum(TP)))
+                # #print("Total FP => " + str(np.sum(FP)))
+                # print("Total Ground Truths => " + str(npos))
                 rec = np.sum(TP)/npos
                 prec = np.sum(TP)/len(dects)
-                print("Recall => " + str(rec))
-                print("Precision => " + str(prec))
+                # print("Recall => " + str(rec))
+                # print("Precision => " + str(prec))
                 sum = rec + prec
                 f1 = 2 * prec * rec / sum
-                print("F1 Score => " + str(f1))
+                # print("F1 Score => " + str(f1))
+                
+                print("++++++++++++++++++++++++++++++++++++++++++")
+                # precision till 2 decimal value
+                prec = prec * 100
+                rec = rec * 100
+                f1 = f1 * 100
+                print(prec.round(2))
+                print(rec.round(2))
+                print(f1.round(2))
             print()
         return ret
 

@@ -44,9 +44,9 @@ labels, values = zip(*[(key, averages[key]) for key in custom_order])
 
 # # Create a bar plot
 # labels, values = zip(*averages.items())
-plt.bar(labels, values, color=['green', 'blue', 'red', 'cyan', 'yellow', 'orange'])
+plt.bar(labels, values, color=['gray'])
 plt.xlabel('Models')
 plt.ylabel('Time in milli seconds')
 plt.title('Average Inference time per word on various languages')
 # plt.xticks(rotation=20, ha='right')
-plt.savefig('inference_time2.png')
+plt.savefig('inference_time_3.png')

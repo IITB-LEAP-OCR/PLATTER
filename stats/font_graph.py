@@ -51,9 +51,9 @@ ranges = ['32-40', '40-50', '50-60', '60-65']
 labels = ranges
 sizes = [sum([data[str(i)] for i in range(32, 40)]), sum([data[str(i)] for i in range(40, 50)]), sum([data[str(i)] for i in range(50, 60)]), sum([data[str(i)] for i in range(60, 65)])]
 explode = (0, 0, 0, 0)  # explode 1st slice
-colors = ['red', 'green', 'blue', 'cyan']
+# colors = ['red', 'green', 'blue', 'cyan']
 # Plot
-plt.pie(sizes, explode=explode, labels=labels, colors=colors,
+plt.pie(sizes, explode=explode, labels=labels, colors=None,
 autopct='%1.1f%%', shadow=True, startangle=140)
 plt.axis('equal')
 

@@ -335,16 +335,16 @@ if len(errors) != 0:
 #showPlot = args.showPlot
 showPlot = False
 
-print('iouThreshold= %f' % iouThreshold)
-print('savePath = %s' % savePath)
-print('gtFormat = %s' % gtFormat)
-print('detFormat = %s' % detFormat)
-print('gtFolder = %s' % gtFolder)
-print('detFolder = %s' % detFolder)
-print('gtCoordType = %s' % gtCoordType)
-print('detCoordType = %s' % detCoordType)
-print('showPlot %s' % showPlot)
-print()
+# print('iouThreshold= %f' % iouThreshold)
+# print('savePath = %s' % savePath)
+# print('gtFormat = %s' % gtFormat)
+# print('detFormat = %s' % detFormat)
+# print('gtFolder = %s' % gtFolder)
+# print('detFolder = %s' % detFolder)
+# print('gtCoordType = %s' % gtCoordType)
+# print('detCoordType = %s' % detCoordType)
+# print('showPlot %s' % showPlot)
+# print()
 
 # Get groundtruth boxes
 allBoundingBoxes, allClasses = getBoundingBoxes(gtFolder,

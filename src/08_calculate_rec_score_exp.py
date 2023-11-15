@@ -73,11 +73,11 @@ results = {}
 results1 = {}
 # models = ['crnn_vgg16_bn', 'master', 'vitstr_small', 'crnn_mobilenet_v3_small', 'parseq']
 models = ['parseq', 'crnn_vgg16_bn', 'master', 'vitstr_small', 'crnn_mobilenet_v3_small', 'sar_resnet31']
-# models = ['master']
+models = ['master']
 
 for model in models:
 
-    predictions_dir = f'/data/BADRI/OCR/results/ocr/pretrained_CHIPS1/{model}/'
+    predictions_dir = f'/data/BADRI/OCR/results/ocr/finetuned_CHIPS1/{model}/'
     # predictions_dir = '/data/BADRI/OCR/results/ocr/gt_chips_1/parseq/'
     ground_truths_dir = '/data/BADRI/OCR/data/CHIPS1/test/txt/'
 
@@ -92,41 +92,43 @@ for model in models:
     }
 
     for file in sorted(os.listdir(predictions_dir), key=natural_sort_key):
-        predictions = get_data(predictions_dir+ file)
-        ground_truths = get_data(ground_truths_dir + file)
+        if(file.split('_')[0]=='gujarati'):
+            predictions = get_data(predictions_dir+ file)
+            ground_truths = get_data(ground_truths_dir + file)
 
-        n = len(predictions)
-        for d in predictions:
-            iou_max = 0
-            for g in ground_truths:
-                detbox, gtbox = d[1], g[1]
-                iou_candidate = iou(gtbox, detbox)
-                if iou_candidate >= iou_max:
-                    iou_max = iou_candidate
-                    pred, actual = d[0], g[0]
-            final_predictions.append(pred)
-            final_ground_truths.append(actual)
-            lang_wise_preds[file.split('_')[0]].append(pred)
-            lang_wise_gts[file.split('_')[0]].append(actual)
+            n = len(predictions)
+            for d in predictions:
+                iou_max = 0
+                for g in ground_truths:
+                    detbox, gtbox = d[1], g[1]
+                    iou_candidate = iou(gtbox, detbox)
+                    if iou_candidate >= iou_max:
+                        iou_max = iou_candidate
+                        pred, actual = d[0], g[0]
+                final_predictions.append(pred)
+                final_ground_truths.append(actual)
+                lang_wise_preds[file.split('_')[0]].append(pred)
+                lang_wise_gts[file.split('_')[0]].append(actual)
+                print(pred, actual)
         
         
     CRR = 100 - fastwer.score(final_predictions, final_ground_truths, char_level=True)
     WRR = 100 - fastwer.score(final_predictions, final_ground_truths)
     print(model,":", CRR, WRR)
     
-    #round to 2
-    CRR = round(CRR, 2)
-    WRR = round(WRR, 2)
+    # #round to 2
+    # CRR = round(CRR, 2)
+    # WRR = round(WRR, 2)
     
-    results[model] = [CRR]
-    results1[model] = [WRR]
+    # results[model] = [CRR]
+    # results1[model] = [WRR]
     
     
-    for lang in lang_wise_preds.keys():
-        CRR = round(100 - fastwer.score(lang_wise_preds[lang], lang_wise_gts[lang], char_level=True),2)
-        WRR = round(100 - fastwer.score(lang_wise_preds[lang], lang_wise_gts[lang]),2)
-        results[model].append(CRR)
-        results1[model].append(WRR)
+    # for lang in lang_wise_preds.keys():
+    #     CRR = round(100 - fastwer.score(lang_wise_preds[lang], lang_wise_gts[lang], char_level=True),2)
+    #     WRR = round(100 - fastwer.score(lang_wise_preds[lang], lang_wise_gts[lang]),2)
+    #     results[model].append(CRR)
+    #     results1[model].append(WRR)
         
         
         
