@@ -16,12 +16,7 @@ def preprocess(file_path,border_x,border_y):
     blur=cv2.GaussianBlur(gray,(13,13),100)
     thresh=cv2.threshold(blur,128,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
     black_pixel_counts = np.sum(thresh == 0, axis=0)
-
-    print(len(black_pixel_counts))
-    # print(black_pixel_counts)
-
     median = np.median(black_pixel_counts)
-    print('median :',median)
     data={}
     for i in range(len(black_pixel_counts)):
         if black_pixel_counts[i]<=median+5:
@@ -52,20 +47,13 @@ def preprocess(file_path,border_x,border_y):
     else:
         r=i
 
-    print(l,r)
-
-    y,x,_=img.shape
-    img=img[0:y,l:r]
-    # cv2.imshow('cropped image',img)
-    gray=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh_inv=cv2.threshold(gray,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
+    y,x=thresh.shape[:2]
+    img=thresh[0:y,l:r]
+    thresh_inv=cv2.threshold(img,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20,2))
-    # dilate=cv2.dilate(thresh_inv, kernel, iterations=20)
     dilate = cv2.morphologyEx(thresh_inv, cv2.MORPH_CLOSE, kernel,iterations=10)
-    # cv2.imshow('dilated image',dilate)
     cnts=cv2.findContours(dilate,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     m=[]
-    print('length of cnts :',len(cnts[0]))
     for i in cnts[0]:
         if len(m)<len(i):
             m=i
@@ -73,14 +61,8 @@ def preprocess(file_path,border_x,border_y):
     pad=10
     if x-pad>=0:
         x=x-pad
-        print('x :',x)
 
     final_image = img[y:y+h,x:-1]
-    # cv2.imwrite(os.path.basename(file_path).split('.')[0]+'_cropped.jpg',final_image)
-    # cv2.imshow('final Image', final_image)
-    # # cv2.imshow('morphed Image', morph)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     return final_image
 
 def save_image(final_image,img_bbox,file_name,output_path):
@@ -102,18 +84,19 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
     page_left_from_bottom=PAGE_H-UPPER_PADDING-((MAX_WORD_H+SPACE_Y)*max_lines)
     sentence_img.append(np.ones((MAX_WORD_H, int(MAX_WORD_H/3)))*255)
     skipped_words=[]
+    w_h=random.randint(MIN_WORD_H,MAX_WORD_H)    # same font for a page
     
     for index,img_path in enumerate(os.listdir(input_folder)):
         try:
-            img=preprocess(os.path.join(input_folder,img_path),BORDER_CUT_X,BORDER_CUT_Y)
-            y,x=img.shape[:2]
-            w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+            img_p=preprocess(os.path.join(input_folder,img_path),BORDER_CUT_X,BORDER_CUT_Y)
+            y,x=img_p.shape[:2]
+            # w_h=random.randint(MIN_WORD_H,MAX_WORD_H)    # same font for a page
             data_stats[w_h] +=1
             new_x=int(w_h/y*x)
             if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
                 w_h=MIN_WORD_H
                 new_x=int(w_h/y*x)
-            img=cv2.resize(img,(new_x,w_h))
+            img=cv2.resize(img_p,(new_x,w_h))
             y,x=img.shape[:2]
             img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
             line_x+=x+SPACE_X
@@ -142,9 +125,24 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
                     saved_pages+=1
                     final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
                     final_image.insert(0,np.ones((UPPER_PADDING,PAGE_W))*255)
+                    print('Font Size :',w_h)
                     save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
+                    w_h=random.randint(MIN_WORD_H,MAX_WORD_H)    # same font for a page
                     final_image=[]
                     img_bbox=[]
+                    y,x=img_p.shape[:2]    # same font for a page
+                    # w_h=random.randint(MIN_WORD_H,MAX_WORD_H)    # same font for a page
+                    data_stats[w_h] +=1    # same font for a page
+                    new_x=int(w_h/y*x)    # same font for a page
+                    if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:    # same font for a page
+                        w_h=MIN_WORD_H    # same font for a page
+                        new_x=int(w_h/y*x)    # same font for a page
+                    img=cv2.resize(img_p,(new_x,w_h))    # same font for a page
+                    y,x=img.shape[:2]    # same font for a page
+                    img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])    # same font for a page
+                    line_x+=x+SPACE_X    # same font for a page
+                        
+                    y,x=img.shape[:2]    # same font for a page
                 sentence_img=[]
                 sentence_img.append(np.ones((MAX_WORD_H, int(MAX_WORD_H/3)))*255)
                 line_x=int(MAX_WORD_H/3)+new_x+SPACE_X
@@ -173,6 +171,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages):
             saved_pages+=1
             final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
             save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
+            w_h=random.randint(MIN_WORD_H,MAX_WORD_H)    # same font for a page
         except:
             pass
 
