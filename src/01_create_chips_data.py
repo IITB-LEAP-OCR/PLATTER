@@ -9,33 +9,79 @@ import pandas as pd
 from config import *
 
 def preprocess(file_path,border_x,border_y):
+    
     img=cv2.imread(file_path)
-    y,x=img.shape[:2]
-    border_cut_y=int(border_y/100*y)
-    border_cut_x=int(border_x/100*x)
-    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
+    y,x_p,_=img.shape
     gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    iy,iw=gray.shape
-    thresh= cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     blur=cv2.GaussianBlur(gray,(13,13),100)
-    thresh_inv=cv2.threshold(blur,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
-    cnts=cv2.findContours(thresh_inv,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    cnts=cnts[0] if len(cnts)==2 else cnts[1]
-    cnts=sorted(cnts,key=lambda x:cv2.boundingRect(x)[1])
-    xl,yl,xh,yh=0,0,0,0
-    for c in cnts:
-        x,y,w,h=cv2.boundingRect(c)
-        if not (((abs(x-0)<5 or abs(x-iw)<5) or (abs(y-0)<5 or abs(y-iy)<5)) and h<30 and w<50):
-            if xh==0:
-                xl,yl,xh,yh=x,y,x+w,y+h
-            else:
-                xl=min(xl,x)
-                yl=min(yl,y)
-                xh=max(xh,x+w)
-                yh=max(yh,y+h)
-                
-    crp=thresh[yl:yh,xl:xh]
-    return crp
+    thresh=cv2.threshold(blur,128,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+    black_pixel_counts = np.sum(thresh == 0, axis=0)
+
+    print(len(black_pixel_counts))
+    # print(black_pixel_counts)
+
+    median = np.median(black_pixel_counts)
+    print('median :',median)
+    data={}
+    for i in range(len(black_pixel_counts)):
+        if black_pixel_counts[i]<=median+5:
+            black_pixel_counts[i]=0
+        data[str(i)]=black_pixel_counts[i]
+
+    l_flag=1
+    r_flag=1
+    for i in range(len(black_pixel_counts)//2):
+        if i<=10:
+            continue
+        if l_flag and black_pixel_counts[i]==0:
+            l_flag=0
+        if not l_flag and black_pixel_counts[i]!=0:
+            break
+    if i == len(black_pixel_counts)//2:
+        l=0
+    else:
+        l=i
+
+    for i in range(len(black_pixel_counts)-1,len(black_pixel_counts)//2,-1):
+        if r_flag and black_pixel_counts[i]==0:
+            r_flag=0
+        if not r_flag and black_pixel_counts[i]!=0:
+            break
+    if i ==len(black_pixel_counts)//2:
+        r=len(black_pixel_counts)
+    else:
+        r=i
+
+    print(l,r)
+
+    y,x,_=img.shape
+    img=img[0:y,l:r]
+    # cv2.imshow('cropped image',img)
+    gray=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    thresh_inv=cv2.threshold(gray,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20,2))
+    # dilate=cv2.dilate(thresh_inv, kernel, iterations=20)
+    dilate = cv2.morphologyEx(thresh_inv, cv2.MORPH_CLOSE, kernel,iterations=10)
+    # cv2.imshow('dilated image',dilate)
+    cnts=cv2.findContours(dilate,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    m=[]
+    print('length of cnts :',len(cnts[0]))
+    for i in cnts[0]:
+        if len(m)<len(i):
+            m=i
+    x,y,w,h=cv2.boundingRect(m)
+    pad=10
+    if x-pad>=0:
+        x=x-pad
+        print('x :',x)
+
+    final_image = img[y:y+h,x:-1]
+    # cv2.imwrite(os.path.basename(file_path).split('.')[0]+'_cropped.jpg',final_image)
+    # cv2.imshow('final Image', final_image)
+    # # cv2.imshow('morphed Image', morph)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    return final_image
 
 def save_image(final_image,img_bbox,file_name,output_path):
     i=np.concatenate(final_image)
