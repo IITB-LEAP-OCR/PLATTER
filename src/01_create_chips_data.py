@@ -12,6 +12,8 @@ def preprocess(file_path):
     
     img=cv2.imread(file_path)
     y,x_p,_=img.shape
+    img=img[0:y,BORDER_CUT_X:x_p]
+    x_p-=BORDER_CUT_X
     gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     blur=cv2.GaussianBlur(gray,(13,13),100)
     thresh=cv2.threshold(blur,128,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
@@ -68,8 +70,7 @@ def preprocess(file_path):
         final_image = img[y:y+h,x:-1]
     else:
         final_image = img
-
-    return final_image
+    return True,final_image
 
 def save_image(final_image,img_bbox,file_name,output_path):
     colour_map=[[0,0,0], [255,0,0],[0,255,0],[0,0,255]]
@@ -77,12 +78,12 @@ def save_image(final_image,img_bbox,file_name,output_path):
     i=np.concatenate(final_image)
     i = i.astype("uint8")
     black_mask = i <= 127
-    print('shape of the final image :',i.shape)
 
     result_image = np.ones((i.shape[0], i.shape[1], 3), dtype=np.uint8) * 255
 
     result_image[black_mask] = colour_map[txt_colour]
     cv2.imwrite(os.path.join(output_path,'images',file_name)+'.jpg',result_image)
+    print(file_name)
     with open(os.path.join(output_path,'txt',file_name)+'.txt','w+',encoding='utf8') as f:
         f.writelines([i+'\n' for i in img_bbox])
 
@@ -101,25 +102,29 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
     skipped_words=[]
     used_files=[]
     w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-    colour_map=[[0,0,0], [255,0,0],[0,255,0],[0,0,255]]
-    txt_colour= random.randint(0,4)
+    font_sizes = list(range(MIN_WORD_H, MAX_WORD_H + 1))
+    num_font_sizes = len(font_sizes)
+    font_probabilities = [1 / num_font_sizes] * num_font_sizes
+    weighted_avg_font_size = [size * prob for size, prob in zip(font_sizes, font_probabilities)]
+    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/2)
+    if gap<MIN_SPACE_X:
+        gap=MIN_SPACE_X
     
     for index,img_path in enumerate(os.listdir(input_folder)):
         try:
             if img_path in used_files:
                 continue
-            img_p=preprocess(os.path.join(input_folder,img_path))
+            img_flag,img_p=preprocess(os.path.join(input_folder,img_path))
+            if not img_flag:
+                continue
             y,x=img_p.shape[:2]
             # w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
             data_stats[w_h] +=1
             new_x=int(w_h/y*x)
-            if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
-                w_h=MIN_WORD_H
-                new_x=int(w_h/y*x)
             img=cv2.resize(img_p,(new_x,w_h))
             y,x=img.shape[:2]
             img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
-            line_x+=x+SPACE_X
+            line_x+=x+gap
                 
             y,x=img.shape[:2]
 
@@ -137,34 +142,41 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                 smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
                 remaining_sentence_width=PAGE_W-xt-8
                 
-                line_x-=(x+SPACE_X)
+                line_x-=(x+gap)
 
-                while smallest_word_width+SPACE_X<remaining_sentence_width:
-                    # print(smallest_word_width,remaining_sentence_width)
+                while smallest_word_width+gap<remaining_sentence_width:
                     try:
-                        t_img=preprocess(os.path.join(input_folder,smallest_image))
+                        img_flag,t_img=preprocess(os.path.join(input_folder,smallest_image))
                         y,x=t_img.shape[:2]
-                        new_x=int(w_h/y*x)
-                        if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
-                            w_h=MIN_WORD_H
-                            new_x=int(w_h/y*x)
+                        if not img_flag or y<w_h:
+                            removed_value = sorted_image_map.pop(smallest_image)
+                            used_files.append(smallest_image)
 
-                        if new_x+SPACE_X<remaining_sentence_width:
+                            yt,xt=sentence_img.shape[:2]
+                            smallest_image, smallest_word = next(iter(sorted_image_map.items()))
+                            width_per_letter_per_sentence=xt//len(sentence_text)
+                            smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
+                            remaining_sentence_width=PAGE_W-xt-8
+                            continue
+
+                        new_x=int(w_h/y*x)
+
+                        if new_x+gap<remaining_sentence_width:
                             removed_value = sorted_image_map.pop(smallest_image)
                             used_files.append(smallest_image)
                             t_img=cv2.resize(t_img,(new_x,w_h))
                             y,x=t_img.shape[:2]
                             t_img=np.concatenate([t_img,np.ones((MAX_WORD_H-w_h,x))*255])
-                            line_x+=x+SPACE_X
+                            line_x+=x+gap
 
                             t_sentence_img.append(t_img)
-                            t_sentence_img.append(np.ones((MAX_WORD_H, SPACE_X))*255)
+                            t_sentence_img.append(np.ones((MAX_WORD_H, gap))*255)
                             sentence_text+=smallest_word
                             sentence_img = np.hstack(t_sentence_img)
                             
-                            bbox_x1=max(0,line_x-new_x-SPACE_X - 8)
+                            bbox_x1=max(0,line_x-new_x-gap - 8)
                             bbox_y1=max(0, (MAX_WORD_H+SPACE_Y)*(n_lines%max_lines) - 8 + UPPER_PADDING)
-                            bbox_x2=line_x-SPACE_X + 8
+                            bbox_x2=line_x-gap + 8
                             bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
                             t_bbox=f'{smallest_word} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
                             img_bbox.append(t_bbox)
@@ -176,6 +188,10 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             remaining_sentence_width=PAGE_W-xt-8
 
                         else:
+                            # print('Fail',smallest_image)
+                            # cv2.imshow('Image', t_img)
+                            # cv2.waitKey(0)
+                            # cv2.destroyAllWindows()
                             break
                     except Exception as e:
                         print('Error',e)
@@ -202,36 +218,39 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                     saved_pages+=1
                     final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
                     final_image.insert(0,np.ones((UPPER_PADDING,PAGE_W))*255)
-                    print('Font Size :',w_h)
+                    # print('GAP :',gap)
                     save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
                     w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+                    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/2)
+                    if gap<MIN_SPACE_X:
+                        gap=MIN_SPACE_X
                     final_image=[]
                     img_bbox=[]
                     y,x=img_p.shape[:2]
                     # w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
                     data_stats[w_h] +=1
                     new_x=int(w_h/y*x)
-                    if (int(MAX_WORD_H/3)+new_x+SPACE_X)>PAGE_W:
+                    if (int(MAX_WORD_H/3)+new_x+gap)>PAGE_W:
                         new_x=int(MIN_WORD_H/y*x)
                     img=cv2.resize(img_p,(new_x,w_h))
                     y,x=img.shape[:2]
                     img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
-                    line_x+=x+SPACE_X 
+                    line_x+=x+gap 
                 sentence_img=[]
                 sentence_text=' '
                 sentence_img.append(np.ones((MAX_WORD_H, int(MAX_WORD_H/3)))*255)
-                line_x=int(MAX_WORD_H/3)+new_x+SPACE_X
+                line_x=int(MAX_WORD_H/3)+new_x+gap
                 # print('NEW LINE')
-            bbox_x1=max(0,line_x-new_x-SPACE_X - 8)
+            bbox_x1=max(0,line_x-new_x-gap - 8)
             bbox_y1=max(0, (MAX_WORD_H+SPACE_Y)*(n_lines%max_lines) - 8 + UPPER_PADDING)
-            bbox_x2=line_x-SPACE_X + 8
+            bbox_x2=line_x-gap + 8
             bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
             t_bbox=f'{image_map[img_path]} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
         except Exception as A:
             print('Error',A)
             continue
         sentence_img.append(img)
-        sentence_img.append(np.ones((MAX_WORD_H, SPACE_X))*255)
+        sentence_img.append(np.ones((MAX_WORD_H, gap))*255)
         sentence_text+=image_map[img_path]
         img_bbox.append(t_bbox)
 
@@ -248,6 +267,9 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
             final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
             save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
             w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+            gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/4)
+            if gap<MIN_SPACE_X:
+                gap=MIN_SPACE_X
         except:
             pass
 
