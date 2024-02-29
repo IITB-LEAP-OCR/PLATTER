@@ -72,9 +72,17 @@ def preprocess(file_path):
     return final_image
 
 def save_image(final_image,img_bbox,file_name,output_path):
+    colour_map=[[0,0,0], [255,0,0],[0,255,0],[0,0,255]]
+    txt_colour= random.randint(0,3)
     i=np.concatenate(final_image)
     i = i.astype("uint8")
-    cv2.imwrite(os.path.join(output_path,'images',file_name)+'.jpg',i)
+    black_mask = i <= 127
+    print('shape of the final image :',i.shape)
+
+    result_image = np.ones((i.shape[0], i.shape[1], 3), dtype=np.uint8) * 255
+
+    result_image[black_mask] = colour_map[txt_colour]
+    cv2.imwrite(os.path.join(output_path,'images',file_name)+'.jpg',result_image)
     with open(os.path.join(output_path,'txt',file_name)+'.txt','w+',encoding='utf8') as f:
         f.writelines([i+'\n' for i in img_bbox])
 
