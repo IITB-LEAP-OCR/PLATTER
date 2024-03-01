@@ -108,7 +108,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
     num_font_sizes = len(font_sizes)
     font_probabilities = [1 / num_font_sizes] * num_font_sizes
     weighted_avg_font_size = [size * prob for size, prob in zip(font_sizes, font_probabilities)]
-    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/2)
+    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
     if gap<MIN_SPACE_X:
         gap=MIN_SPACE_X
     
@@ -225,7 +225,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                     # print('GAP :',gap)
                     save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
                     w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-                    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/2)
+                    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
                     if gap<MIN_SPACE_X:
                         gap=MIN_SPACE_X
                     final_image=[]
@@ -271,7 +271,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
             final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
             save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
             w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-            gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]/4)
+            gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
             if gap<MIN_SPACE_X:
                 gap=MIN_SPACE_X
         except:
