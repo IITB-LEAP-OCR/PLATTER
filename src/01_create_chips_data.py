@@ -49,27 +49,29 @@ def preprocess(file_path):
     else:
         r=i
 
-    y,x=thresh.shape[:2]
-    img=thresh[0:y,l:r]
+    y_m,x_m=thresh.shape[:2]
+    border_cut_y=int(BORDER_CUT_Y/100*y_m)
+    img=thresh[border_cut_y:y_m-border_cut_y,l:r]
+    y_m-=border_cut_y
     thresh_inv=cv2.threshold(img,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20,2))
-    dilate = cv2.morphologyEx(thresh_inv, cv2.MORPH_CLOSE, kernel,iterations=10)
-    cnts=cv2.findContours(dilate,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    m=[]
+    cnts=cv2.findContours(thresh_inv,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    cnts=cnts[0] if len(cnts)==2 else cnts[1]
+    cnts=sorted(cnts,key=lambda x:cv2.boundingRect(x)[1])
+    xl,yl,xh,yh=0,0,0,0
+    for c in cnts:
+        x,y,w,h=cv2.boundingRect(c)
+        if not (((abs(x-0)<5 or abs(x-x_m)<5) or (abs(y-0)<5 or abs(y-y_m)<5)) and h<30 and w<50):
+            if xh==0:
+                xl,yl,xh,yh=x,y,x+w,y+h
+            else:
+                xl=min(xl,x)
+                yl=min(yl,y)
+                xh=max(xh,x+w)
+                yh=max(yh,y+h)
+                
+            # cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),5)
+    final_image = img[yl:yh,xl:xh]
     
-    if cnts and len(cnts[0]) > 0:
-        for i in cnts[0]:
-            if len(m)<len(i):
-                m=i
-        x,y,w,h=cv2.boundingRect(m)
-        pad=10
-        if x-pad>=0:
-            x=x-pad
-            # print('x :',x)
-
-        final_image = img[y:y+h,x:-1]
-    else:
-        final_image = img
     return True,final_image
 
 def save_image(final_image,img_bbox,file_name,output_path):
@@ -151,6 +153,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                         if not img_flag or y<w_h:
                             removed_value = sorted_image_map.pop(smallest_image)
                             used_files.append(smallest_image)
+                            skipped_words.append(smallest_word)
 
                             yt,xt=sentence_img.shape[:2]
                             smallest_image, smallest_word = next(iter(sorted_image_map.items()))
@@ -198,6 +201,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                         try:
                             removed_value = sorted_image_map.pop(smallest_image)
                             used_files.append(smallest_image)
+                            skipped_words.append(smallest_word)
                         except:
                             pass
                         yt,xt=sentence_img.shape[:2]
