@@ -172,6 +172,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
     gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
     if gap<MIN_SPACE_X:
         gap=MIN_SPACE_X
+    if gap>w_h:
+        gap=w_h
     
     # Loop through each image in the input folder
     for index,img_path in enumerate(os.listdir(input_folder)):
@@ -311,6 +313,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                     gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
                     if gap<MIN_SPACE_X:
                         gap=MIN_SPACE_X
+                    if gap>w_h:
+                        gap=w_h
                     final_image=[]
                     img_bbox=[]
                     y,x=img_p.shape[:2]
@@ -366,6 +370,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
             gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
             if gap<MIN_SPACE_X:
                 gap=MIN_SPACE_X
+            if gap>w_h:
+                gap=w_h
         except:
             pass
 
