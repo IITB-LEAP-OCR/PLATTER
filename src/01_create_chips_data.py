@@ -130,8 +130,9 @@ def save_image(final_image, img_bbox, file_name, output_path):
     # for i in img_bbox:
     #     i=i.split()[1:]
     #     x1,y1,x2,y2=int(i[0]),int(i[1]),int(i[2]),int(i[3]),
-    #     print(i)
+    #     # print(i)
     #     cv2.rectangle(result_image, (x1,y1), (x2,y2), (0,0,255), 2)
+    
     cv2.imwrite(image_file_path, result_image)
     
     print("Image saved:", file_name)
@@ -242,8 +243,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             continue
 
                         new_x=int(w_h/y*x)
+                        # print('remaining_sentence_width :',remaining_sentence_width,',new_word_x :',new_x,',gap :',gap,',smallest_word_width :',smallest_word_width, end=' ')
 
                         if new_x+gap<remaining_sentence_width:
+                            # print('Done with gap')
+
                             # If the word fits, add it to the sentence
                             removed_value = sorted_image_map.pop(smallest_image)
                             used_files.append(smallest_image)
@@ -276,6 +280,8 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             remaining_sentence_width=PAGE_W-xt-8
 
                         elif new_x<remaining_sentence_width:
+                            # print('Done without gap')
+
                             # If the word fits, add it to the sentence
                             removed_value = sorted_image_map.pop(smallest_image)
                             used_files.append(smallest_image)
@@ -288,14 +294,14 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
 
                             # Append the word image and update the sentence text
                             t_sentence_img.append(t_img)
-                            t_sentence_img.append(np.ones((MAX_WORD_H, gap))*255)
+                            # t_sentence_img.append(np.ones((MAX_WORD_H, gap))*255)
                             sentence_text+=smallest_word
                             sentence_img = np.hstack(t_sentence_img)
                             
                             # Calculate bounding box coordinates and append to the list
-                            bbox_x1=max(0,line_x-x-gap - 8)
+                            bbox_x1=max(0,line_x-x - 8)
                             bbox_y1=max(0, (MAX_WORD_H+SPACE_Y)*(n_lines%max_lines) - 8 + UPPER_PADDING)
-                            bbox_x2=line_x-gap + 8
+                            bbox_x2=line_x + 8
                             bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
                             t_bbox=f'{smallest_word} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
                             img_bbox.append(t_bbox)
@@ -309,6 +315,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             break
 
                         else:
+                            # print('Not Done')
                             # Break if the word cannot fit into the remaining space
                             break
                     except Exception as e:
