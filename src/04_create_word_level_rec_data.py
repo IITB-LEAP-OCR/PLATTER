@@ -4,6 +4,8 @@ import cv2
 import re
 import json
 
+from config import DATA_DIR, RESULTS_DIR
+
 def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
 
@@ -29,14 +31,16 @@ placeholders = ['আফগানিস্তান', 'આધાર-પુરા�
 
 # for lang in languages:
 
-folder = 'finetuned_CHIPS1'
-   
-img_dir = '/data/BADRI/OCR/data/CHIPS1/test/images/'
+folder = 'gt_CHIPS'
 
-output_dir = f'/data/BADRI/OCR/results/intermediate/{folder}/'
+
+   
+img_dir = DATA_DIR + 'test/images/'
+
+output_dir = f'{RESULTS_DIR}intermediate/{folder}/'
 
 if(folder=='gt_CHIPS1'):
-    txt_dir = f'/data/BADRI/OCR/data/CHIPS1/test/txt/'
+    txt_dir = f'/data/BADRI/OCR/data/CHIPS/test/txt/'
 else:
     txt_dir = f'/data/BADRI/OCR/results/detection/txt/{folder}/'
 
