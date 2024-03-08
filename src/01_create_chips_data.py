@@ -8,7 +8,49 @@ import pandas as pd
 
 from config import *
 
-def preprocess(file_path):
+def preprocess_1(file_path,border_x,border_y):
+    """
+    Preprocesses and Crops the Input Word level Image.
+
+    Arguments:
+    file_path: Path to the image file.
+    border_x: Percentage of the border to be cut along x-axis
+    border_y: Percentage of the border to be cut along y-axis
+
+    Returns:
+    numpy.ndarray: Preprocessed image if successful, None otherwise.
+    """
+    # Load the Image and apply Border Cutting on it
+    img=cv2.imread(file_path)
+    y,x=img.shape[:2]
+    border_cut_y=int(border_y/100*y)
+    border_cut_x=int(border_x/100*x)
+    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    iy,iw=gray.shape
+    # Binarize the Image and Get Contours from the Image
+    thresh= cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    blur=cv2.GaussianBlur(gray,(13,13),100)
+    thresh_inv=cv2.threshold(blur,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
+    cnts=cv2.findContours(thresh_inv,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    cnts=cnts[0] if len(cnts)==2 else cnts[1]
+    cnts=sorted(cnts,key=lambda x:cv2.boundingRect(x)[1])
+    xl,yl,xh,yh=0,0,0,0
+    for c in cnts:
+        x,y,w,h=cv2.boundingRect(c)
+        if not (((abs(x-0)<5 or abs(x-iw)<5) or (abs(y-0)<5 or abs(y-iy)<5)) and h<30 and w<50):
+            if xh==0:
+                xl,yl,xh,yh=x,y,x+w,y+h
+            else:
+                xl=min(xl,x)
+                yl=min(yl,y)
+                xh=max(xh,x+w)
+                yh=max(yh,y+h)
+                
+    crp=thresh[yl:yh,xl:xh]
+    return crp
+
+def preprocess_2(file_path):
     """
     Preprocesses and Crops the Input Word level Image.
 
@@ -126,12 +168,6 @@ def save_image(final_image, img_bbox, file_name, output_path):
     
     # Save image
     image_file_path = os.path.join(output_path, 'images', file_name) + '.jpg'
-
-    # for i in img_bbox:
-    #     i=i.split()[1:]
-    #     x1,y1,x2,y2=int(i[0]),int(i[1]),int(i[2]),int(i[3]),
-    #     # print(i)
-    #     cv2.rectangle(result_image, (x1,y1), (x2,y2), (0,0,255), 2)
     
     cv2.imwrite(image_file_path, result_image)
     
@@ -190,7 +226,10 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                 continue
 
             # Preprocess the image
-            img_p=preprocess(os.path.join(input_folder,img_path))
+            if language.lower() in ['tamil','malayalam']:
+                img_p=preprocess_2(os.path.join(input_folder,img_path))
+            else:
+                img_p=preprocess_1(os.path.join(input_folder,img_path), BORDER_CUT_X, BORDER_CUT_Y)
             y,x=img_p.shape[:2]
             data_stats[w_h] +=1
             new_x=int(w_h/y*x)
@@ -203,53 +242,57 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
 
             # Keep track of used files
             used_files.append(img_path)
-            removed_value = sorted_image_map.pop(img_path)
 
             # If the line exceeds page width, start a new line
             if line_x>PAGE_W:
                 # Handle cases where smallest word fits in the remaining space
                 # to avoid leaving a large gap at the end of the line
 
-
-                t_sentence_img=sentence_img
-                sentence_img = np.hstack(sentence_img)
-                yt,xt=sentence_img.shape[:2]
-
-                smallest_image, smallest_word = next(iter(sorted_image_map.items()))
-
-                width_per_letter_per_sentence=xt//len(sentence_text)
-                smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
-                remaining_sentence_width=PAGE_W-xt-8
-                
+                smallest_word_index = 0
+                skipped_images = 0
                 line_x-=(x+gap)
+                t_sentence_img=sentence_img
 
-                while smallest_word_width<remaining_sentence_width:
+                while skipped_images<=5:
                     try:
+                        sentence_img = np.hstack(t_sentence_img)
+                        yt,xt=sentence_img.shape[:2]
+                        
+                        # Load the Smalles Image from the sorted image map
+                        smallest_image, smallest_word = sorted_image_map[smallest_word_index]
+
+                        # Skip the Image if already used
+                        if smallest_image in used_files:
+                            sorted_image_map.pop(smallest_word_index)
+                            continue
+
                         # Preprocess the smallest image
-                        t_img=preprocess(os.path.join(input_folder,smallest_image))
+                        if language.lower() in ['tamil','malayalam']:
+                            t_img=preprocess_2(os.path.join(input_folder,smallest_image))
+                        else:
+                            t_img=preprocess_1(os.path.join(input_folder,smallest_image), BORDER_CUT_X, BORDER_CUT_Y)
+                        
                         y,x=t_img.shape[:2]
+
+                        # Skip if word height is smaller than the minimum word height
                         if y<w_h:
-                            # Skip if word height is smaller than the minimum word height
-                            removed_value = sorted_image_map.pop(smallest_image)
+                            # print('Skipped')
+                            sorted_image_map.pop(smallest_word_index)
                             used_files.append(smallest_image)
                             skipped_words.append(smallest_word)
-
-                            # Update dimensions and fetch the next smallest word
-                            yt,xt=sentence_img.shape[:2]
-                            smallest_image, smallest_word = next(iter(sorted_image_map.items()))
-                            width_per_letter_per_sentence=xt//len(sentence_text)
-                            smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
-                            remaining_sentence_width=PAGE_W-xt-8
+                            skipped_images+=1
+                            # cv2.imwrite('/data/circulars/DATA/TACTFUL/skipped_images/'+smallest_image,t_img)
                             continue
 
                         new_x=int(w_h/y*x)
-                        # print('remaining_sentence_width :',remaining_sentence_width,',new_word_x :',new_x,',gap :',gap,',smallest_word_width :',smallest_word_width, end=' ')
+                        remaining_sentence_width=PAGE_W-xt-8
 
+                        # print('remaining_sentence_width :',remaining_sentence_width,'new_x :',new_x, end = ', ')
+
+                        # If the word fits, add it to the sentence
                         if new_x+gap<remaining_sentence_width:
-                            # print('Done with gap')
-
-                            # If the word fits, add it to the sentence
-                            removed_value = sorted_image_map.pop(smallest_image)
+                            # print('Done')
+                            sorted_image_map.pop(smallest_word_index)
                             used_files.append(smallest_image)
                             t_img=cv2.resize(t_img,(new_x,w_h))
                             y,x=t_img.shape[:2]
@@ -271,19 +314,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
                             t_bbox=f'{smallest_word} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
                             img_bbox.append(t_bbox)
+                            continue
 
-                            # Update dimensions and fetch the next smallest word
-                            yt,xt=sentence_img.shape[:2]
-                            smallest_image, smallest_word = next(iter(sorted_image_map.items()))
-                            width_per_letter_per_sentence=xt//len(sentence_text)
-                            smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
-                            remaining_sentence_width=PAGE_W-xt-8
-
+                        # Try adding the image without gap and break out of loop
                         elif new_x<remaining_sentence_width:
-                            # print('Done without gap')
-
-                            # If the word fits, add it to the sentence
-                            removed_value = sorted_image_map.pop(smallest_image)
+                            sorted_image_map.pop(smallest_word_index)
                             used_files.append(smallest_image)
                             t_img=cv2.resize(t_img,(new_x,w_h))
                             y,x=t_img.shape[:2]
@@ -294,7 +329,6 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
 
                             # Append the word image and update the sentence text
                             t_sentence_img.append(t_img)
-                            # t_sentence_img.append(np.ones((MAX_WORD_H, gap))*255)
                             sentence_text+=smallest_word
                             sentence_img = np.hstack(t_sentence_img)
                             
@@ -305,35 +339,29 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             bbox_y2=(MAX_WORD_H+SPACE_Y)*((n_lines%max_lines)+1)-SPACE_Y - (MAX_WORD_H-w_h) + 8 + UPPER_PADDING
                             t_bbox=f'{smallest_word} {bbox_x1} {bbox_y1} {bbox_x2} {bbox_y2}'
                             img_bbox.append(t_bbox)
-
-                            # Update dimensions and fetch the next smallest word
-                            yt,xt=sentence_img.shape[:2]
-                            smallest_image, smallest_word = next(iter(sorted_image_map.items()))
-                            width_per_letter_per_sentence=xt//len(sentence_text)
-                            smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
-                            remaining_sentence_width=PAGE_W-xt-8
                             break
 
+                        # skip the image if it can not fit and increase the number of skipped images for while loop
                         else:
-                            # print('Not Done')
-                            # Break if the word cannot fit into the remaining space
-                            break
+                            # print('Skipped word:',smallest_word,smallest_image)
+                            skipped_images+=1
+                            smallest_word_index+=1
+                            # cv2.imwrite('/data/circulars/DATA/TACTFUL/skipped_images/'+smallest_image,t_img)
+                            continue
+
                     except Exception as e:
                         # Handle exceptions and move to the next smallest word
                         print('Error',e)
+                        skipped_images+=1
                         try:
-                            removed_value = sorted_image_map.pop(smallest_image)
-                            used_files.append(smallest_image)
                             skipped_words.append(smallest_word)
+                            sorted_image_map.pop(smallest_word_index)
+                            used_files.append(smallest_image)
                         except:
                             pass
-                        yt,xt=sentence_img.shape[:2]
-                        smallest_image, smallest_word = next(iter(sorted_image_map.items()))
-                        width_per_letter_per_sentence=xt//len(sentence_text)
-                        smallest_word_width = len(smallest_word)*width_per_letter_per_sentence
-                        remaining_sentence_width=PAGE_W-xt-8
-                    
+                        
                 # Fill the remaining space in the line with blank images
+                sentence_img = np.hstack(t_sentence_img)
                 residual=PAGE_W-sentence_img.shape[1]
                 if residual>0:
                     sentence_img=np.hstack([sentence_img,np.ones((MAX_WORD_H,residual))*255])
