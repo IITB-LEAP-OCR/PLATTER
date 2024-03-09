@@ -14,8 +14,8 @@ def preprocess_1(file_path,border_x,border_y):
 
     Arguments:
     file_path: Path to the image file.
-    border_x: border to be cut along x-axis
-    border_y: border to be cut along y-axis
+    border_x: Percentage of the border to be cut along x-axis
+    border_y: Percentage of the border to be cut along y-axis
 
     Returns:
     numpy.ndarray: Preprocessed image if successful, None otherwise.
@@ -23,8 +23,8 @@ def preprocess_1(file_path,border_x,border_y):
     # Load the Image and apply Border Cutting on it
     img=cv2.imread(file_path)
     y,x=img.shape[:2]
-    border_cut_y = border_y
-    border_cut_x = border_x
+    border_cut_y=int(border_y/100*y)
+    border_cut_x=int(border_x/100*x)
     img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
     gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     iy,iw=gray.shape
@@ -62,11 +62,12 @@ def preprocess_2(file_path):
     """
     # Read image
     img=cv2.imread(file_path)
+    y,x = img.shape[:2]
 
     # Crop borders
-    y,x_p,_=img.shape
-    img=img[0:y,BORDER_CUT_X:x_p]
-    x_p-=BORDER_CUT_X
+    border_cut_y=int(BORDER_CUT_Y/100*y)
+    border_cut_x=int(BORDER_CUT_X/100*x)
+    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
 
     # Convert to grayscale and apply Gaussian blur
     gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
