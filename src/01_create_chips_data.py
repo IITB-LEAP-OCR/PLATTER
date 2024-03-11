@@ -208,6 +208,13 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
     used_files=[]
 
     # Generate random word height and calculate gap between words
+    random_w_h_list = []
+    temp_w_h = RANDOM_HEIGHT_PROPORTION[0]
+    while temp_w_h<=RANDOM_HEIGHT_PROPORTION[1]:
+        random_w_h_list.append(temp_w_h)
+        temp_w_h+=0.1
+    print(random_w_h_list)
+
     w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
     font_sizes = list(range(MIN_WORD_H, MAX_WORD_H + 1))
     num_font_sizes = len(font_sizes)
@@ -233,12 +240,15 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                 img_p=preprocess_1(os.path.join(input_folder,img_path), BORDER_CUT_X, BORDER_CUT_Y)
             y,x=img_p.shape[:2]
             data_stats[w_h] +=1
-            new_x=int(w_h/y*x)
-            img=cv2.resize(img_p,(new_x,w_h))
+            random_w_h = int(random.choice(random_w_h_list)*w_h)
+            if random_w_h> MAX_WORD_H:
+                random_w_h=MAX_WORD_H
+            new_x=int(random_w_h/y*x)
+            img=cv2.resize(img_p,(new_x,random_w_h))
             y,x=img.shape[:2]
 
             # Concatenate with white space to make the height consistent
-            img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
+            img=np.concatenate([img,np.ones((MAX_WORD_H-random_w_h,x))*255])
             line_x+=x+gap
 
             # Keep track of used files
@@ -284,8 +294,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             skipped_images+=1
                             # cv2.imwrite('/data/circulars/DATA/TACTFUL/skipped_images/'+smallest_image,t_img)
                             continue
-
-                        new_x=int(w_h/y*x)
+                        
+                        random_w_h = int(random.choice(random_w_h_list)*w_h)
+                        if random_w_h> MAX_WORD_H:
+                            random_w_h=MAX_WORD_H
+                        new_x=int(random_w_h/y*x)
                         remaining_sentence_width=PAGE_W-xt-8
 
                         # print('remaining_sentence_width :',remaining_sentence_width,'new_x :',new_x, end = ', ')
@@ -295,11 +308,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             # print('Done')
                             sorted_image_map.pop(smallest_word_index)
                             used_files.append(smallest_image)
-                            t_img=cv2.resize(t_img,(new_x,w_h))
+                            t_img=cv2.resize(t_img,(new_x,random_w_h))
                             y,x=t_img.shape[:2]
 
                             # Concatenate with white space to make the height consistent
-                            t_img=np.concatenate([t_img,np.ones((MAX_WORD_H-w_h,x))*255])
+                            t_img=np.concatenate([t_img,np.ones((MAX_WORD_H-random_w_h,x))*255])
                             line_x+=x+gap
 
                             # Append the word image and update the sentence text
@@ -321,11 +334,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                         elif new_x<remaining_sentence_width:
                             sorted_image_map.pop(smallest_word_index)
                             used_files.append(smallest_image)
-                            t_img=cv2.resize(t_img,(new_x,w_h))
+                            t_img=cv2.resize(t_img,(new_x,random_w_h))
                             y,x=t_img.shape[:2]
 
                             # Concatenate with white space to make the height consistent
-                            t_img=np.concatenate([t_img,np.ones((MAX_WORD_H-w_h,x))*255])
+                            t_img=np.concatenate([t_img,np.ones((MAX_WORD_H-random_w_h,x))*255])
                             line_x+=x
 
                             # Append the word image and update the sentence text
@@ -394,16 +407,17 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                 
                 y,x=img_p.shape[:2]
                 data_stats[w_h] +=1
-                new_x=int(w_h/y*x)
-                if (int(MAX_WORD_H/3)+new_x+gap)>PAGE_W:
-                    new_x=int(MIN_WORD_H/y*x)
+                random_w_h = int(random.choice(random_w_h_list)*w_h)
+                if random_w_h> MAX_WORD_H:
+                    random_w_h=MAX_WORD_H
+                new_x=int(random_w_h/y*x)
 
                 # Resize the image
-                img=cv2.resize(img_p,(new_x,w_h))
+                img=cv2.resize(img_p,(new_x,random_w_h))
                 y,x=img.shape[:2]
 
                 # Concatenate with white space to make the height consistent
-                img=np.concatenate([img,np.ones((MAX_WORD_H-w_h,x))*255])
+                img=np.concatenate([img,np.ones((MAX_WORD_H-random_w_h,x))*255])
                 line_x+=x+gap 
 
                 sentence_img=[]
