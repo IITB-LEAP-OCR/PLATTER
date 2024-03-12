@@ -17,4 +17,5 @@ INPUT_FOLDER  = '/data/BADRI/DATASETS/BENCHMARK/RECOGNITON/HANDWRITTEN/IIIT_INDI
 OUTPUT_FOLDER = '/data/BADRI/OCR/data/' + FOLDER_NAME + '/'
 
 LANGUAGES = ['bengali', 'gujarati', 'gurumukhi', 'hindi', 'kannada', 'malayalam','odia', 'tamil', 'telugu', 'urdu']
+LANG_BLACK_PIXEL = ['tamil', 'malayalam']
 SETS = ['val', 'test', 'train']

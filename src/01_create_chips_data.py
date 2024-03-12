@@ -8,74 +8,21 @@ import pandas as pd
 
 from config import *
 
-def preprocess_1(file_path,border_x,border_y):
-    """
-    Preprocesses and Crops the Input Word level Image.
+def get_random_gap_and_font_size():
+    w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+    font_sizes = list(range(MIN_WORD_H, MAX_WORD_H + 1))
+    num_font_sizes = len(font_sizes)
+    font_probabilities = [1 / num_font_sizes] * num_font_sizes
+    weighted_avg_font_size = [size * prob for size, prob in zip(font_sizes, font_probabilities)]
+    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
+    if gap<MIN_SPACE_X:
+        gap=MIN_SPACE_X
+    if gap>w_h:
+        gap=w_h
 
-    Arguments:
-    file_path: Path to the image file.
-    border_x: Percentage of the border to be cut along x-axis
-    border_y: Percentage of the border to be cut along y-axis
+    return w_h, gap
 
-    Returns:
-    numpy.ndarray: Preprocessed image if successful, None otherwise.
-    """
-    # Load the Image and apply Border Cutting on it
-    img=cv2.imread(file_path)
-    y,x=img.shape[:2]
-    border_cut_y=int(border_y/100*y)
-    border_cut_x=int(border_x/100*x)
-    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
-    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    iy,iw=gray.shape
-    # Binarize the Image and Get Contours from the Image
-    thresh= cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    blur=cv2.GaussianBlur(gray,(13,13),100)
-    thresh_inv=cv2.threshold(blur,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
-    cnts=cv2.findContours(thresh_inv,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    cnts=cnts[0] if len(cnts)==2 else cnts[1]
-    cnts=sorted(cnts,key=lambda x:cv2.boundingRect(x)[1])
-    xl,yl,xh,yh=0,0,0,0
-    for c in cnts:
-        x,y,w,h=cv2.boundingRect(c)
-        if not (((abs(x-0)<5 or abs(x-iw)<5) or (abs(y-0)<5 or abs(y-iy)<5)) and h<30 and w<50):
-            if xh==0:
-                xl,yl,xh,yh=x,y,x+w,y+h
-            else:
-                xl=min(xl,x)
-                yl=min(yl,y)
-                xh=max(xh,x+w)
-                yh=max(yh,y+h)
-                
-    crp=thresh[yl:yh,xl:xh]
-    return crp
-
-def preprocess_2(file_path):
-    """
-    Preprocesses and Crops the Input Word level Image.
-
-    Arguments:
-    file_path: Path to the image file.
-
-    Returns:
-    numpy.ndarray: Preprocessed image if successful, None otherwise.
-    """
-    # Read image
-    img=cv2.imread(file_path)
-    y,x = img.shape[:2]
-
-    # Crop borders
-    border_cut_y=int(BORDER_CUT_Y/100*y)
-    border_cut_x=int(BORDER_CUT_X/100*x)
-    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
-
-    # Convert to grayscale and apply Gaussian blur
-    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    blur=cv2.GaussianBlur(gray,(13,13),100)
-
-    # Apply Otsu's thresholding
-    thresh=cv2.threshold(blur,128,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-
+def det_black_pixels(thresh):
     # Calculate black pixel counts
     black_pixel_counts = np.sum(thresh == 0, axis=0)
     median = np.median(black_pixel_counts)
@@ -110,11 +57,42 @@ def preprocess_2(file_path):
     else:
         r=i
 
-    # Crop image based on computed boundaries
+    return l,r
+
+def preprocess(file_path, language):
+    """
+    Preprocesses and Crops the Input Word level Image.
+
+    Arguments:
+    file_path: Path to the image file.
+
+    Returns:
+    numpy.ndarray: Preprocessed image if successful, None otherwise.
+    """
+    # Read image
+    img=cv2.imread(file_path)
+    y,x = img.shape[:2]
+
+    # Crop borders
+    border_cut_y=int(BORDER_CUT_Y/100*y)
+    border_cut_x=int(BORDER_CUT_X/100*x)
+    img=img[border_cut_y:y-border_cut_y,border_cut_x:x-border_cut_x]
+
+    # Convert to grayscale and apply Gaussian blur
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    blur=cv2.GaussianBlur(gray,(13,13),100)
+
+    # Apply Otsu's thresholding
+    thresh=cv2.threshold(blur,128,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+
     y_m,x_m=thresh.shape[:2]
-    border_cut_y=int(BORDER_CUT_Y/100*y_m)
-    img=thresh[border_cut_y:y_m-border_cut_y,l:r]
-    y_m-=border_cut_y
+    if language.lower() in LANG_BLACK_PIXEL:
+        l,r = det_black_pixels(thresh)
+
+        # Crop image based on computed boundaries
+        img=thresh[0:y_m,l:r]
+    else:
+        img=thresh
 
     # Invert threshold and find contours
     thresh_inv=cv2.threshold(img,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
@@ -210,21 +188,24 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
     # Generate random word height and calculate gap between words
     random_w_h_list = []
     temp_w_h = RANDOM_HEIGHT_PROPORTION[0]
+    print('RUNNING')
     while temp_w_h<=RANDOM_HEIGHT_PROPORTION[1]:
         random_w_h_list.append(temp_w_h)
         temp_w_h+=0.1
     print(random_w_h_list)
 
-    w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-    font_sizes = list(range(MIN_WORD_H, MAX_WORD_H + 1))
-    num_font_sizes = len(font_sizes)
-    font_probabilities = [1 / num_font_sizes] * num_font_sizes
-    weighted_avg_font_size = [size * prob for size, prob in zip(font_sizes, font_probabilities)]
-    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
-    if gap<MIN_SPACE_X:
-        gap=MIN_SPACE_X
-    if gap>w_h:
-        gap=w_h
+    # w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
+    # font_sizes = list(range(MIN_WORD_H, MAX_WORD_H + 1))
+    # num_font_sizes = len(font_sizes)
+    # font_probabilities = [1 / num_font_sizes] * num_font_sizes
+    # weighted_avg_font_size = [size * prob for size, prob in zip(font_sizes, font_probabilities)]
+    # gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
+    # if gap<MIN_SPACE_X:
+    #     gap=MIN_SPACE_X
+    # if gap>w_h:
+    #     gap=w_h
+
+    w_h, gap = get_random_gap_and_font_size()
     
     # Loop through each image in the input folder
     for index,img_path in enumerate(os.listdir(input_folder)):
@@ -234,10 +215,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                 continue
 
             # Preprocess the image
-            if language.lower() in ['tamil','malayalam']:
-                img_p=preprocess_2(os.path.join(input_folder,img_path))
-            else:
-                img_p=preprocess_1(os.path.join(input_folder,img_path), BORDER_CUT_X, BORDER_CUT_Y)
+            # if language.lower() in ['tamil','malayalam']:
+            #     img_p=preprocess_2(os.path.join(input_folder,img_path))
+            # else:
+            #     img_p=preprocess_1(os.path.join(input_folder,img_path), BORDER_CUT_X, BORDER_CUT_Y)
+            img_p=preprocess(os.path.join(input_folder,img_path), language)
             y,x=img_p.shape[:2]
             data_stats[w_h] +=1
             random_w_h = int(random.choice(random_w_h_list)*w_h)
@@ -278,10 +260,11 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                             continue
 
                         # Preprocess the smallest image
-                        if language.lower() in ['tamil','malayalam']:
-                            t_img=preprocess_2(os.path.join(input_folder,smallest_image))
-                        else:
-                            t_img=preprocess_1(os.path.join(input_folder,smallest_image), BORDER_CUT_X, BORDER_CUT_Y)
+                        # if language.lower() in ['tamil','malayalam']:
+                        #     t_img=preprocess_2(os.path.join(input_folder,smallest_image))
+                        # else:
+                        #     t_img=preprocess_1(os.path.join(input_folder,smallest_image), BORDER_CUT_X, BORDER_CUT_Y)
+                        t_img = preprocess(os.path.join(input_folder,smallest_image), language)
                         
                         y,x=t_img.shape[:2]
 
@@ -396,12 +379,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
                     save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
 
                     # Generate new random word height and gap
-                    w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-                    gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
-                    if gap<MIN_SPACE_X:
-                        gap=MIN_SPACE_X
-                    if gap>w_h:
-                        gap=w_h
+                    w_h, gap = get_random_gap_and_font_size()
                     final_image=[]
                     img_bbox=[]
                 
@@ -462,12 +440,7 @@ def gen_images(language, input_folder,output_folder,image_map, saved_pages, sort
             saved_pages+=1
             final_image.append(np.ones((page_left_from_bottom,PAGE_W))*255)
             save_image(final_image,img_bbox,f'{language}_page_{saved_pages}',output_folder)
-            w_h=random.randint(MIN_WORD_H,MAX_WORD_H)
-            gap = int(w_h*weighted_avg_font_size[w_h-MIN_WORD_H]*2/3)
-            if gap<MIN_SPACE_X:
-                gap=MIN_SPACE_X
-            if gap>w_h:
-                gap=w_h
+            w_h, gap = get_random_gap_and_font_size()
         except:
             pass
 
