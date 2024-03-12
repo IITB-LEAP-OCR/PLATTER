@@ -499,7 +499,7 @@ if __name__ == "__main__":
             data = pd.read_csv(image_map_file, sep='\t', header=None, names=['Image', 'Category'], encoding='utf-8')
             data['Image'] = data['Image'].apply(lambda x: x.split('/')[-1])
             image_map = data.set_index('Image').to_dict()['Category']
-            sorted_image_map = dict(sorted(image_map.items(), key=lambda item: len(item[1])))
+            sorted_image_map = sorted([[item[0],item[1]] for item in image_map.items()], key = lambda item: len(item[1]))
             
             try:
                 saved_pages = len(os.listdir(OUTPUT_FOLDER + typeset + '/images/'))
